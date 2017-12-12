@@ -1,7 +1,7 @@
 -- stack --install-ghc runghc
 
--- This doesn't seem very legible
--- It's also suuper slow.  I am a bad Haskell
+-- This version tries to make it a more clear-cut tail-recursion.
+-- It seems no faster than jumps.hs
 
 import Data.Ix
 import Data.Array
@@ -23,13 +23,13 @@ toArray numbers = array (0, ((length numbers) - 1)) (enumerate numbers)
 
 -- Simpler entry function for recursion
 countJumpsToEscape :: [Int] -> Int
-countJumpsToEscape jumps = recurse (toArray jumps) 0
+countJumpsToEscape jumps = recurse (toArray jumps) 0 0
 
 -- Jump recusively.  This seems harder to read than if it had been imperitive
 -- On the fun side, this had to recurse about 370000 times
-recurse :: Array Int Int -> Int -> Int
-recurse jumps i | (i < 0 || i >= length jumps) = 0
-                | otherwise = inc (recurse (incrementJump jumps i) (jumps ! i + i))
+recurse :: Array Int Int -> Int -> Int -> Int
+recurse jumps i depth | (i < 0 || i >= length jumps) = depth
+                      | otherwise = recurse (incrementJump jumps i) (jumps ! i + i) (depth + 1)
 
 -- Increment one point in the jump array by one.  Haskell seems to claim that
 -- this is going to be reasonably efficient even though it's immutable, but I
