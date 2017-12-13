@@ -1,7 +1,7 @@
 -- stack --install-ghc runghc
 
 -- This version tries to make it a more clear-cut tail-recursion.
--- It seems no faster than jumps.hs
+-- It's still real slow.  Real, real slow.
 
 import Data.Ix
 import Data.Array
@@ -35,7 +35,11 @@ recurse jumps i depth | (i < 0 || i >= length jumps) = depth
 -- this is going to be reasonably efficient even though it's immutable, but I
 -- don't know how to think of this as other than a full copy.
 incrementJump :: Array Int Int -> Int -> Array Int Int
-incrementJump jumps i = jumps // [(i, (inc (jumps ! i)))]
+incrementJump jumps i = jumps // [(i, oneOrThree (jumps ! i))]
+
+oneOrThree :: Int -> Int
+oneOrThree offset | offset >= 3 = offset - 1
+                  | otherwise = inc offset
 
 
 main = do
