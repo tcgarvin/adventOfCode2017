@@ -21,8 +21,13 @@ cyclesUntilRepeat banks = recurse banks Set.empty
 -- As in puzzle 5, concerned about modification
 recurse :: B.ByteString -> Set.Set B.ByteString -> Int
 recurse banks seen -- | trace (show (B.unpack banks)) False = undefined
-                   | Set.member banks seen = 0
-                   | otherwise = (recurse (balance banks) (Set.insert banks seen)) + 1
+                   | Set.member banks seen = recurse2 (balance banks) banks
+                   | otherwise = recurse (balance banks) (Set.insert banks seen)
+
+recurse2 :: B.ByteString -> B.ByteString -> Int
+recurse2 banks toMatch -- | trace (show (B.unpack banks)) False = undefined
+                   | eq banks toMatch = 0
+                   | otherwise = (recurse (balance banks) toMatch) + 1
 
 
 -- I keep writing this helper, so I must be missing something.
