@@ -26,8 +26,8 @@ recurse banks seen -- | trace (show (B.unpack banks)) False = undefined
 
 recurse2 :: B.ByteString -> B.ByteString -> Int
 recurse2 banks toMatch -- | trace (show (B.unpack banks)) False = undefined
-                   | eq banks toMatch = 0
-                   | otherwise = (recurse (balance banks) toMatch) + 1
+                   | banks == toMatch = 1
+                   | otherwise = (recurse2 (balance banks) toMatch) + 1
 
 
 -- I keep writing this helper, so I must be missing something.
