@@ -26,7 +26,7 @@ def parse_input(lines):
 
 
 # In-place modifiation
-def knot(source, lengths):
+def knot_inner(source, lengths):
     curs = 0
     skip = 0
     for round_num in xrange(64):
@@ -60,7 +60,15 @@ def tohex(num):
         s = "0" + s
 
     return s
-    
+
+
+def knot128(input_string):
+    lengths = map(ord, input_string) + [17,31,73,47,23]
+    data = range(256)
+    knot_inner(data, lengths)
+    dense_hash = dense(data)
+    hex_string = reduce(lambda accum, y: accum + tohex(y), dense_hash, str())
+    return hex_string
 
         
 if __name__ == "__main__":
@@ -68,7 +76,7 @@ if __name__ == "__main__":
     print lengths
 
     data = range(256)
-    knot(data, lengths)
+    knot_inner(data, lengths)
 
     dense_hash = dense(data)
 
