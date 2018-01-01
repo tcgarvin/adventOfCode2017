@@ -1,5 +1,6 @@
 import fileinput
 from collections import defaultdict
+from Queue import Queue, Empty
 
 def is_int(value):
     try:
@@ -15,31 +16,48 @@ def is_int(value):
 
 class Microcontroller:
 
-    def __init__(self, code):
+    def __init__(self, program_id, code, input_queue, output_queue):
         self._registers = defaultdict(int)
+        self._registers["p"] = program_id
+        self.pid = program_id
         self._pc = 0
         self._ticks = 0
         self.code = code
-        self.sounds_played = []
-        self.sounds_recovered = []
+        self._outbound = output_queue
+        self._inbound = input_queue
+        self.sent = 0
+        self.waiting = False
+
+
+    def is_complete(self):
+        return self._pc < 0 or self._pc >= len(self.code)
+
+
+    def can_progress(self):
+        return not self.is_complete() and (not self.waiting or not self._inbound.empty())
+        
 
     def run_to_completion(self):
-        while self._pc >= 0 and self._pc < len(self.code):
+        while not self.is_complete():
             self.tick()
 
-    def run_to_first_rcv(self):
-        while len(self.sounds_recovered) == 0:
+
+    def run_to_first_wait(self):
+        while self.can_progress():
             self.tick()
+
 
     def tick(self):
         instruction = self.code[self._pc]
         self.run_instruction(instruction)
-        self._ticks += 1
+        if not self.waiting:
+            self._ticks += 1
+
 
     def run_instruction(self, instruction):
-        print self._ticks, instruction.name, instruction.x, self.dereference(instruction.x), instruction.y
-        # "Use a visitor pattern", I hear you saying. Sue me!
+        self._log(self._ticks, instruction.name, instruction.x, instruction.y)
         getattr(self, "_isa_" + instruction.name)(instruction)
+
 
     # resolve register values or return the literal int
     def dereference(self, value):
@@ -50,16 +68,12 @@ class Microcontroller:
         
 
     ### Instruction Set ###
-    def _isa_snd(self, instruction):
-        sound = self.dereference(instruction.x)
-        self.sounds_played.append(sound)
-        self._pc += 1
-
     def _isa_set(self, instruction):
         target_reg = instruction.x
         value = self.dereference(instruction.y)
         self._registers[target_reg] = value
         self._pc += 1
+
 
     def _isa_add(self, instruction):
         target_reg = instruction.x
@@ -67,11 +81,13 @@ class Microcontroller:
         self._registers[target_reg] += value
         self._pc += 1
 
+
     def _isa_mul(self, instruction):
         target_reg = instruction.x
         value = self.dereference(instruction.y)
         self._registers[target_reg] *= value
         self._pc += 1
+
 
     def _isa_mod(self, instruction):
         target_reg = instruction.x
@@ -79,16 +95,32 @@ class Microcontroller:
         self._registers[target_reg] %= value
         self._pc += 1
 
-    # Not clear what this does besides end the puzzle
+
+    def _isa_snd(self, instruction):
+        to_send = self.dereference(instruction.x)
+        self._outbound.put(to_send, False)
+        self.sent += 1
+        self._pc += 1
+        self._log("Sent", to_send)
+
+
     def _isa_rcv(self, instruction):
-        conditional = self.dereference(instruction.x)
-        
-        if conditional == 0:
+        received = None
+        try:
+            received = self._inbound.get(False)
+        except Empty:
+            pass
+
+        if received is None:
+            self.waiting = True
             return
 
-        self.sounds_recovered.append(self.sounds_played[-1])
+        self.waiting = False
+        self._registers[instruction.x] = received
         self._pc += 1
+        self._log("Got ", received)
         
+
     def _isa_jgz(self, instruction):
         conditional = self.dereference(instruction.x)
         if conditional <= 0:
@@ -97,6 +129,11 @@ class Microcontroller:
 
         jump = self.dereference(instruction.y)
         self._pc += jump
+
+
+    def _log(self, *items):
+        to_print = [("\t\t\t" * self.pid)] + list(items)
+        print(" ".join(map(str,to_print)))
 
         
 
@@ -123,18 +160,39 @@ class Instruction:
         self.y = y
 
 
+def run_programs_to_completion(prog_a, prog_b):
+    while prog_a.can_progress() or prog_b.can_progress():
+        prog_a.run_to_first_wait()
+        prog_b.run_to_first_wait()
+
+
+
 def parse_input(lines):
     return [Instruction.from_puzzle_input(l) for l in lines]
-    
 
 
 if __name__ == "__main__":
     instructions = parse_input(fileinput.input())
 
-    microcontroller = Microcontroller(instructions)
-    microcontroller.run_to_first_rcv()
+    output = Queue()
+    microcontroller = Microcontroller(0, instructions, Queue(), output)
+    microcontroller.run_to_first_wait()
+
+    last_output = None
+    while not output.empty():
+        last_output = output.get(False)
 
     print "Answer 1"
-    print microcontroller.sounds_recovered[0]
+    print last_output
+
+    q0to1 = Queue()
+    q1to0 = Queue()
+    program0 = Microcontroller(0, instructions, q1to0, q0to1)
+    program1 = Microcontroller(1, instructions, q0to1, q1to0)
+
+    run_programs_to_completion(program0, program1)
+
+    print "Answer 2"
+    print program1.sent
     
     
