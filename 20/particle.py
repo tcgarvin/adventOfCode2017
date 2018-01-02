@@ -1,7 +1,8 @@
 import fileinput
 import re
+from collections import defaultdict
 
-# Could go get VPython or any of the several math libs, but we'll stick with
+# Could go get VPython or any of the several math libs, but we'll hack it with
 # stock python for now
 class ParticleState:
 
@@ -44,7 +45,7 @@ class ParticleState:
         self.az=az
 
     def __str__(self):
-        return "p=<%s,%s,%s>, v=<%s,%s,%s>, a=<%s,%s,%s>" % (self.x, self.y, self.z, self.vx, self.vy, self.vz, self.ax, self.ay, self.az)
+        return "%s: p=<%s,%s,%s>, v=<%s,%s,%s>, a=<%s,%s,%s>" % (self.number, self.x, self.y, self.z, self.vx, self.vy, self.vz, self.ax, self.ay, self.az)
 
 
 def find_long_term_closest(p_states):
@@ -64,8 +65,42 @@ def find_long_term_closest(p_states):
             print "Dupe", manhattan_acceleration, state.number, state
 
     return candidate
-        
 
+
+def simulate_one_tick(state):
+    state.vx += state.ax
+    state.vy += state.ay
+    state.vz += state.az
+    state.x += state.vx
+    state.y += state.vy
+    state.z += state.vz
+
+
+def simulate_with_collisions(p_states):
+    time = 0
+    time_since_last_collision = 0
+    remaining_p_states = {state.number: state for state in p_states}
+    while time_since_last_collision < 1000:
+        collision_index = defaultdict(list)
+        for state in p_states:
+            simulate_one_tick(state)
+            collision_position = collision_index[(state.x, state.y, state.z)]
+            collision_position.append(state)
+
+            if len(collision_position) > 1:
+                print "Collision.  Time since last:", time_since_last_collision
+                time_since_last_collision = 0
+                for colliding_state in collision_position:
+                    removed = remaining_p_states.pop(colliding_state.number, None)
+                    if removed is not None:
+                        print "Neutralized", removed
+
+        if time_since_last_collision == 0:
+            print len(remaining_p_states), "remaining"
+        time_since_last_collision += 1
+        time += 1
+
+    return len(remaining_p_states)
 
 
 def parse_particle_states(lines):
@@ -79,3 +114,9 @@ if __name__ == "__main__":
     closest = find_long_term_closest(p_states)
 
     print "Answer 1 can be derived by looking at the above debug statements"
+    print ""
+
+    remaining_after_collisions = simulate_with_collisions(p_states)
+
+    print "Answer 2"
+    print remaining_after_collisions
