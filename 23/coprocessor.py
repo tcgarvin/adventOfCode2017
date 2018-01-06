@@ -80,7 +80,7 @@ class Coprocessor:
 
     def _isa_jnz(self, instruction):
         conditional = self.dereference(instruction.x)
-        if conditional != 0:
+        if conditional == 0:
             self._pc += 1
             return
 
