@@ -15,8 +15,10 @@ def is_int(value):
 
 class Coprocessor:
 
-    def __init__(self, code):
-        self._registers = defaultdict(int)
+    def __init__(self, code, registers=None):
+        self._registers = registers
+        if registers is None:
+            self._registers = defaultdict(int)
         self._pc = 0
         self._ticks = 0
         self.code = code
@@ -43,7 +45,7 @@ class Coprocessor:
 
 
     def run_instruction(self, instruction):
-        self._log(self._ticks, instruction.name, instruction.x, instruction.y)
+        #self._log(self._ticks, instruction.name, instruction.x, instruction.y)
         getattr(self, "_isa_" + instruction.name)(instruction)
 
 
@@ -130,4 +132,13 @@ if __name__ == "__main__":
 
     print "Answer 1"
     print program.mul_count
+
+    registers = defaultdict(int)
+    registers["a"] = 1
+    program2 = Coprocessor(instructions, registers)
+    program2.run_to_completion()
+
+    print ""
+    print "Answer 2"
+    print registers["h"]
 
