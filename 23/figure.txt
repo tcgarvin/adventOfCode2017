@@ -1,0 +1,34 @@
+start:
+b = 5700 - 100000 = -93000
+c = -110000
+
+loop1:
+set f 1
+set d 2
+
+loop2:
+set e 2
+
+loop3:
+if (d*e-b) == 0:
+    # f is never set 
+    set f = 0
+
+sub e -1
+
+if e-b != 0:
+    loop3
+
+sub d -1
+
+if d - b != 0:
+    loop2
+
+if f == 0:
+    sub h -1
+
+if b - c == 0:
+    END
+
+sub b -17
+loop1

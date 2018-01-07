@@ -68,6 +68,10 @@ class Coprocessor:
     def _isa_sub(self, instruction):
         target_reg = instruction.x
         value = self.dereference(instruction.y)
+
+        if instruction.x == "h":
+            print "sub h", value
+
         self._registers[target_reg] -= value
         self._pc += 1
 
@@ -81,7 +85,16 @@ class Coprocessor:
 
 
     def _isa_jnz(self, instruction):
+        #if instruction.y == -13:
+            # short-circuit
+            #self._registers["d"] -= self._registers["g"]
+            #self._registers["g"] = 0
+
         conditional = self.dereference(instruction.x)
+
+        if instruction.y != -8 and instruction.y != -13:
+            print "jnz", instruction.x, instruction.y, conditional, self._registers
+
         if conditional == 0:
             self._pc += 1
             return
@@ -94,7 +107,6 @@ class Coprocessor:
         to_print = list(items)
         print(" ".join(map(str,to_print)))
 
-        
 
 class Instruction:
 

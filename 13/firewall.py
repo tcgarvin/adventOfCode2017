@@ -3,26 +3,14 @@ import fileinput
 class Layer:
     def __init__(self, scan_range):
         self.scan_range = scan_range
-        self.reset()
+        
+
+    def cycle_time(self):
+        return (self.scan_range - 1) * 2
 
 
-    def at_pos(self,index):
-        return self.curs == index
-
-
-    def tick(self):
-        if self.dir == "forward" and self.curs == self.scan_range - 1:
-            self.dir = "backward"
-
-        elif self.dir == "backward" and self.curs == 0:
-            self.dir = "forward"
-
-        self.curs += 1 if self.dir == "forward" else -1
-
-
-    def reset(self):
-        self.curs = 0
-        self.dir = "forward"
+    def present_at(self, time):
+        return time % self.cycle_time() == 0
 
 
     def get_range(self):
@@ -30,7 +18,7 @@ class Layer:
 
 
     def __repr__(self):
-        return "Layer(%s) -> %s %s" % (self.scan_range, self.curs, self.dir)
+        return "Layer(%s)" % (self.scan_range,)
 
 
 
@@ -38,17 +26,17 @@ class NoneLayer(Layer):
     def __init__(self):
         pass
 
-    def at_pos(self, index):
+    def cycle_time(self):
+        return 0
+
+    def present_at(self, time):
         return False
-
-    def tick(self):
-        pass
-
-    def reset(self):
-        pass
 
     def get_range(self):
         return 0
+
+    def __repr__(self):
+        return "NoneLayer()"
 
 NONE_LAYER = NoneLayer()
         
@@ -63,27 +51,19 @@ class Firewall:
         self.layers[position] = layer
         
 
-    def tick(self):
-        for layer in self.layers.itervalues():
-            layer.tick()
-
-
-    def reset(self):
-        for layer in self.layers.itervalues():
-            layer.reset()
-        
-
-    def security_check(self, position):
+    def security_check(self, position, time):
+        caught = False
         severity = 0
         layer = self.layers.get(position, NONE_LAYER)
-        if layer.at_pos(0):
+        if layer.present_at(time):
+            caught = True
             severity = position * layer.get_range()
-            #print severity, position, layer
-        return severity
+        #print position, time, layer, caught, severity
+        return caught, severity
 
 
     def num_layers(self):
-        return max(self.layers.iterkeys())
+        return max(self.layers.iterkeys()) + 1
             
     
 
@@ -96,29 +76,30 @@ def parse_firewall(lines):
     return firewall
 
 
-def severity_for_crossing(firewall):
+def severity_for_crossing(firewall, time):
+    caught = False
     severity = 0
     for position in xrange(firewall.num_layers()):
-        severity += firewall.security_check(position)
-        firewall.tick()
+        position_caught, position_severity = firewall.security_check(position, position + time)
+        caught |= position_caught
+        severity += position_severity
 
-    return severity
+    return caught, severity
 
 
-# XXX: Didn't track being caught seperately from the severity value, so need to rework that
-def find_delay_for_safe_crossing(firewall):
-    found_safe_passage = False
-    delay = -1
-    while not found_safe_passage:
+def is_crossing_clean(firewall, time):
+    for position in xrange(firewall.num_layers()):
+        position_caught, position_severity = firewall.security_check(position, position + time)
+        if position_caught:
+            return False
+
+    return True
+
+
+def find_clean_delay(firewall):
+    delay = 0
+    while not is_crossing_clean(firewall, delay):
         delay += 1
-        firewall.reset()
-        for t in xrange(delay):
-            firewall.tick()
-
-        sev = severity_for_crossing(firewall)
-        print delay, sev
-        if sev == 0:
-            found_safe_passage = True
 
     return delay
 
@@ -126,6 +107,11 @@ def find_delay_for_safe_crossing(firewall):
 if __name__ == "__main__":
     firewall = parse_firewall(fileinput.input())
 
-    #print severity_for_crossing(firewall)
+    caught, severity = severity_for_crossing(firewall, 0)
 
-    print find_delay_for_safe_crossing(firewall)
+    print "Answer 1"
+    print severity
+    print ""
+    delay = find_clean_delay(firewall)
+    print "Answer 2"
+    print delay
